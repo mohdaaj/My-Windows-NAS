@@ -162,37 +162,25 @@
                             <div class="file-card-body">
                                 <div class="file-card-name">{{ file.name }}</div>
                                 <div class="file-card-meta">{{ file.type }} · {{ file.size }}</div>
-                                {% if not file.is_video %}
-                                    <a class="btn btn-sm focusable"
-                                       href="{{ url_for('download_file', folder_name=folder_name, filename=file.name) }}"
-                                       target="_blank" tabindex="-1">
-                                        <i class="fas fa-download"></i> Download
-                                    </a>
-                                {% endif %}
+                                <div class="file-card-actions">
+                                    {% if not file.is_video %}
+                                        <a class="btn btn-sm focusable"
+                                           href="{{ url_for('download_file', folder_name=folder_name, filename=file.name) }}"
+                                           target="_blank" tabindex="-1">
+                                            <i class="fas fa-download"></i> Download
+                                        </a>
+                                    {% endif %}
+                                    <button class="btn btn-sm btn-danger-soft delete-btn focusable"
+                                            tabindex="-1"
+                                            data-filename="{{ file.name }}"
+                                            data-delete-url="{{ url_for('delete_file', folder_name=folder_name, filename=file.name) }}">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     {% endfor %}
                 </div>
-
-                <!-- Upload section (tucked at bottom, accessible but not primary) -->
-                <details class="upload-drawer">
-                    <summary class="upload-drawer-toggle focusable" tabindex="0">
-                        <i class="fas fa-upload"></i> Upload files to this library
-                    </summary>
-                    <form action="{{ url_for('upload_files', folder_name=folder_name) }}" method="post" enctype="multipart/form-data" class="upload-form">
-                        <div class="upload-row">
-                            <label>
-                                Choose files
-                                <input name="upload_files" type="file" multiple accept="*/*">
-                            </label>
-                            <label>
-                                Subfolder (optional)
-                                <input name="subfolder_name" type="text" placeholder="e.g. Season 1">
-                            </label>
-                            <button type="submit" class="btn btn-primary">Upload</button>
-                        </div>
-                    </form>
-                </details>
 
             {% else %}
                 <div class="empty-folder">
@@ -201,10 +189,51 @@
                     <p>Upload some videos to this library to start watching.</p>
                 </div>
             {% endif %}
+
+            <!-- Upload — always visible -->
+            <details class="upload-drawer">
+                <summary class="upload-drawer-toggle focusable" tabindex="0">
+                    <i class="fas fa-upload"></i> Upload files to this library
+                </summary>
+                <form action="{{ url_for('upload_files', folder_name=folder_name) }}" method="post" enctype="multipart/form-data" class="upload-form">
+                    <div class="upload-row">
+                        <label>
+                            Choose files
+                            <input name="upload_files" type="file" multiple accept="*/*">
+                        </label>
+                        <label>
+                            Subfolder (optional)
+                            <input name="subfolder_name" type="text" placeholder="e.g. Season 1">
+                        </label>
+                        <button type="submit" class="btn btn-primary">Upload</button>
+                    </div>
+                </form>
+            </details>
+
         </div>
         {% endif %}
 
     </div><!-- /.tv-shell -->
+
+    <!-- DELETE CONFIRMATION MODAL -->
+    <div class="modal-overlay" id="deleteModal" aria-hidden="true">
+        <div class="modal-card" role="dialog" aria-modal="true">
+            <div class="modal-header">
+                <h2>Delete File?</h2>
+                <button class="modal-close" id="closeDeleteModal" aria-label="Close"><i class="fas fa-times"></i></button>
+            </div>
+            <p class="delete-modal-filename" id="deleteModalFilename"></p>
+            <p class="delete-modal-warning">This will permanently delete the file from your disk. This cannot be undone.</p>
+            <div class="delete-modal-actions">
+                <button class="btn btn-cancel" id="deleteModalCancel">Cancel</button>
+                <form id="deleteModalForm" method="post" action="">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> Yes, Delete
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>

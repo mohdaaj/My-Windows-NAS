@@ -7,10 +7,7 @@ from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 CONFIG_FILE = "shared_folders.json"
-DEFAULT_SHARED_FOLDERS = {
-    "Movies": r"C:\Users\Public\Videos",
-    "Documents": r"C:\Users\Public\Documents"
-}
+DEFAULT_SHARED_FOLDERS = {}
 
 VIDEO_EXTENSIONS = {"mp4", "mkv", "mov", "avi", "webm"}
 
@@ -24,7 +21,7 @@ def load_shared_folders():
                     return data
         except Exception:
             pass
-    return DEFAULT_SHARED_FOLDERS.copy()
+    return {}
 
 
 def save_shared_folders(folders):
@@ -247,6 +244,21 @@ def preview_file(folder_name, filename):
     if not directory or not os.path.exists(directory):
         abort(404)
     return send_from_directory(directory, filename, as_attachment=False)
+
+
+@app.route("/delete/<folder_name>/<path:filename>", methods=["POST"])
+def delete_file(folder_name, filename):
+    directory = SHARED_FOLDERS.get(folder_name)
+    if not directory or not os.path.exists(directory):
+        abort(404)
+    safe_path = secure_path_join(os.path.abspath(directory), filename)
+    if not safe_path or not os.path.isfile(safe_path):
+        return redirect(url_for("view_folder", folder_name=folder_name, message="File not found.", message_type="error"))
+    try:
+        os.remove(safe_path)
+        return redirect(url_for("view_folder", folder_name=folder_name, message=f'"{filename}" deleted.', message_type="success"))
+    except Exception:
+        return redirect(url_for("view_folder", folder_name=folder_name, message="Could not delete file.", message_type="error"))
 
 
 @app.route("/add-folder", methods=["POST"])

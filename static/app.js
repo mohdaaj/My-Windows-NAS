@@ -31,7 +31,50 @@ let uiHideTimer = null;
 let isPlayerOpen = false;
 let focusedCardIndex = -1;
 
-// ─── MODAL ───────────────────────────────────
+// ─── DELETE MODAL ────────────────────────────
+const deleteModal         = document.getElementById('deleteModal');
+const deleteModalForm     = document.getElementById('deleteModalForm');
+const deleteModalFilename = document.getElementById('deleteModalFilename');
+const closeDeleteModal    = document.getElementById('closeDeleteModal');
+const deleteModalCancel   = document.getElementById('deleteModalCancel');
+
+function openDeleteModal(filename, deleteUrl) {
+    if (!deleteModal) return;
+    deleteModalFilename.textContent = filename;
+    deleteModalForm.action = deleteUrl;
+    deleteModal.classList.add('active');
+    deleteModal.setAttribute('aria-hidden', 'false');
+    // focus the cancel button by default (safer choice)
+    setTimeout(() => deleteModalCancel?.focus(), 50);
+}
+
+function closeDeleteModalFn() {
+    if (!deleteModal) return;
+    deleteModal.classList.remove('active');
+    deleteModal.setAttribute('aria-hidden', 'true');
+}
+
+closeDeleteModal?.addEventListener('click', closeDeleteModalFn);
+deleteModalCancel?.addEventListener('click', closeDeleteModalFn);
+deleteModal?.addEventListener('click', (e) => { if (e.target === deleteModal) closeDeleteModalFn(); });
+
+// Delegate click on delete buttons inside file grid
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.delete-btn');
+    if (!btn) return;
+    e.stopPropagation();
+    e.preventDefault();
+    openDeleteModal(btn.dataset.filename, btn.dataset.deleteUrl);
+}, true); // capture phase — fires before the card's click handler
+
+// Escape closes delete modal too
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && deleteModal?.classList.contains('active')) {
+        closeDeleteModalFn();
+    }
+}, true);
+
+
 function openModal() {
     if (!folderModal) return;
     folderModal.classList.add('active');
@@ -362,6 +405,7 @@ window.addEventListener('keydown', (e) => {
 
 // ─── FILE CARD CLICK ─────────────────────────
 fileGrid?.addEventListener('click', (e) => {
+    if (e.target.closest('.delete-btn')) return; // ignore delete clicks
     const card = e.target.closest('.file-card');
     if (!card) return;
     const url  = card.dataset.previewUrl;
