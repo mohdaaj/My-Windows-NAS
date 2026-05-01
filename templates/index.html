@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-    <div class="sidebar">
+    <div class="sidebar" id="sidebar">
         <div class="branding">
             <div class="logo-icon"><i class="fas fa-server"></i></div>
             <div>
@@ -32,17 +32,23 @@
             <div class="server-status"><i class="fas fa-circle"></i> Online</div>
         </div>
     </div>
+<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
     <main class="content">
         <header class="topbar">
-            <div>
-                <p class="eyebrow">Dashboard</p>
-                <h1>{{ folder_name or 'Welcome Admin' }}</h1>
-                {% if folder_name %}
-                    <p class="subtitle">{{ files|length }} files · {{ total_size }}</p>
-                {% else %}
-                    <p class="subtitle">Choose a shared folder to browse your library.</p>
-                {% endif %}
+            <div class="topbar-left">
+                <button id="mobileMenuToggle" class="mobile-menu-btn" type="button" aria-label="Open menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div>
+                    <p class="eyebrow">Dashboard</p>
+                    <h1>{{ folder_name or 'Welcome Admin' }}</h1>
+                    {% if folder_name %}
+                        <p class="subtitle">{{ files|length }} files · {{ total_size }}</p>
+                    {% else %}
+                        <p class="subtitle">Choose a shared folder to browse your library.</p>
+                    {% endif %}
+                </div>
             </div>
             <div class="actions">
                 <div class="search-wrap">
