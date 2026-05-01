@@ -3,42 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PyNAS</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <title>PyNAS | Modern Storage</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-    <main class="container">
-        <header>
-            <h1>PyNAS</h1>
-            <p>Shared folders on this Windows NAS</p>
+    <div class="sidebar">
+        <div class="branding">
+            <div class="logo-icon"><i class="fas fa-server"></i></div>
+            <div>
+                <div class="logo-text">PyNAS</div>
+                <div class="logo-subtitle">Your local media hub</div>
+            </div>
+        </div>
+
+        <div class="folder-heading">Storage</div>
+        <nav class="folder-list">
+            {% for name in folders %}
+                <a href="{{ url_for('view_folder', folder_name=name) }}" class="nav-item {% if folder_name == name %}active{% endif %}">
+                    <span><i class="fas fa-folder"></i> {{ name }}</span>
+                    <span class="folder-count">{{ folder_stats[name] }}</span>
+                </a>
+            {% endfor %}
+        </nav>
+
+        <div class="sidebar-footer">
+            <div>Server</div>
+            <div class="server-status"><i class="fas fa-circle"></i> Online</div>
+        </div>
+    </div>
+
+    <main class="content">
+        <header class="topbar">
+            <div>
+                <p class="eyebrow">Dashboard</p>
+                <h1>{{ folder_name or 'Welcome Admin' }}</h1>
+                {% if folder_name %}
+                    <p class="subtitle">{{ files|length }} files · {{ total_size }}</p>
+                {% else %}
+                    <p class="subtitle">Choose a shared folder to browse your library.</p>
+                {% endif %}
+            </div>
+            <div class="actions">
+                <div class="search-wrap">
+                    <i class="fas fa-search"></i>
+                    <input id="fileSearch" type="search" placeholder="Search files..." aria-label="Search files">
+                </div>
+                <button id="viewGrid" class="view-toggle active" type="button" title="Grid view"><i class="fas fa-th-large"></i></button>
+                <button id="viewList" class="view-toggle" type="button" title="List view"><i class="fas fa-list"></i></button>
+            </div>
         </header>
 
-        <section class="panel">
-            <h2>Shared folders</h2>
-            <ul class="folder-list">
-                {% for folder in folders %}
-                    <li><a href="/view/{{ folder }}">{{ folder }}</a></li>
-                {% endfor %}
-            </ul>
-        </section>
-
-        {% if folder_name %}
-        <section class="panel">
-            <div class="panel-header">
-                <h2>Contents of {{ folder_name }}</h2>
-                <a class="back-link" href="/">Back</a>
-            </div>
+        <section class="file-grid" id="fileGrid">
             {% if files %}
-                <ul class="file-list">
-                    {% for file in files %}
-                        <li><a href="/download/{{ folder_name }}/{{ file }}">{{ file }}</a></li>
-                    {% endfor %}
-                </ul>
+                {% for file in files %}
+                    <a href="{{ url_for('download_file', folder_name=folder_name, filename=file.name) }}" class="file-card" target="_blank" data-name="{{ file.name|lower }}">
+                        <div class="file-card-meta">
+                            <div class="file-icon-box">
+                                <i class="file-icon fas {{ file.icon }}"></i>
+                            </div>
+                            <div>
+                                <div class="file-name">{{ file.name }}</div>
+                                <div class="file-details">{{ file.type }} · {{ file.size }} · {{ file.modified }}</div>
+                            </div>
+                        </div>
+                        <div class="download-hint">Download</div>
+                    </a>
+                {% endfor %}
             {% else %}
-                <p>No files found in this folder.</p>
+                <div class="empty-state">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <h2>No files ready yet</h2>
+                    <p>Select a folder from the sidebar to browse your shared files.</p>
+                </div>
             {% endif %}
         </section>
-        {% endif %}
     </main>
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>
