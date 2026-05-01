@@ -20,10 +20,17 @@
         <div class="folder-heading">Storage</div>
         <nav class="folder-list">
             {% for name in folders %}
-                <a href="{{ url_for('view_folder', folder_name=name) }}" class="nav-item {% if folder_name == name %}active{% endif %}">
-                    <span><i class="fas fa-folder"></i> {{ name }}</span>
-                    <span class="folder-count">{{ folder_stats[name] }}</span>
-                </a>
+                <div class="folder-row">
+                    <a href="{{ url_for('view_folder', folder_name=name) }}" class="nav-item {% if folder_name == name %}active{% endif %}">
+                        <span><i class="fas fa-folder"></i> {{ name }}</span>
+                        <span class="folder-count">{{ folder_stats[name] }}</span>
+                    </a>
+                    {% if name not in default_folders %}
+                        <form action="{{ url_for('remove_folder', folder_name=name) }}" method="post" class="remove-folder-form">
+                            <button type="submit" class="remove-folder-btn" title="Remove shared folder"><i class="fas fa-trash"></i></button>
+                        </form>
+                    {% endif %}
+                </div>
             {% endfor %}
         </nav>
 
@@ -33,6 +40,45 @@
         </div>
     </div>
 <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <div class="folder-modal" id="folderModal" aria-hidden="true">
+        <div class="folder-modal-card" role="dialog" aria-modal="true" aria-labelledby="folderModalLabel">
+            <div class="folder-modal-header">
+                <div>
+                    <h2 id="folderModalLabel">Share a folder from this device</h2>
+                    <p class="modal-description">Select a local folder path and give it a label to make it available in the NAS.</p>
+                </div>
+                <button id="closeFolderModal" class="close-modal" type="button" aria-label="Close modal"><i class="fas fa-times"></i></button>
+            </div>
+
+            <div class="folder-browser-panel">
+                <div class="folder-browser-top">
+                    <div class="folder-path-label">Current browse path</div>
+                    <div id="browsePathText" class="folder-path-text">Choose a drive or folder</div>
+                </div>
+                <div class="folder-browser-actions">
+                    <button id="parentFolderBtn" class="folder-action" type="button">Up one level</button>
+                    <button id="refreshFolderBtn" class="folder-action" type="button">Refresh</button>
+                </div>
+                <ul id="folderList" class="folder-list-items"></ul>
+            </div>
+
+            <form action="{{ url_for('add_folder') }}" method="post" class="folder-add-form">
+                <label>
+                    Folder label
+                    <input name="folder_name" type="text" placeholder="Media Library" required>
+                </label>
+                <label>
+                    Folder path
+                    <input id="manualFolderPath" name="folder_path" type="text" placeholder="C:\\Users\\Public\\Videos" required>
+                </label>
+                <div class="folder-modal-buttons">
+                    <button type="submit" class="primary-btn">Add shared folder</button>
+                    <button id="chooseCurrentFolderBtn" type="button" class="secondary-btn">Use current browser path</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <main class="content">
         <header class="topbar">
@@ -55,10 +101,15 @@
                     <i class="fas fa-search"></i>
                     <input id="fileSearch" type="search" placeholder="Search files..." aria-label="Search files">
                 </div>
+                <button id="openFolderModal" class="view-toggle" type="button" title="Add shared folder"><i class="fas fa-plus"></i></button>
                 <button id="viewGrid" class="view-toggle active" type="button" title="Grid view"><i class="fas fa-th-large"></i></button>
                 <button id="viewList" class="view-toggle" type="button" title="List view"><i class="fas fa-list"></i></button>
             </div>
         </header>
+
+        {% if message %}
+            <div class="notice {{ message_type }}">{{ message }}</div>
+        {% endif %}
 
         <section class="file-grid" id="fileGrid">
             {% if files %}

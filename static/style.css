@@ -71,6 +71,238 @@ body::before {
     visibility: visible;
 }
 
+.notice {
+    margin-bottom: 1.5rem;
+    padding: 1rem 1.25rem;
+    border-radius: 1.25rem;
+    display: inline-flex;
+    gap: 0.75rem;
+    align-items: center;
+    font-size: 0.95rem;
+}
+
+.notice.success {
+    background: rgba(56, 189, 248, 0.14);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    color: #dbeafe;
+}
+
+.notice.error {
+    background: rgba(248, 113, 113, 0.16);
+    border: 1px solid rgba(248, 113, 113, 0.28);
+    color: #fecaca;
+}
+
+.folder-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.remove-folder-form {
+    display: inline-flex;
+}
+
+.remove-folder-btn {
+    width: 2.5rem;
+    height: 2.5rem;
+    border: none;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--muted);
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.remove-folder-btn:hover {
+    background: rgba(248, 113, 113, 0.18);
+    color: #fca5a5;
+}
+
+.folder-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    z-index: 40;
+}
+
+.folder-modal.active {
+    display: flex;
+}
+
+.folder-modal-card {
+    width: min(780px, 100%);
+    max-height: 90vh;
+    overflow: hidden;
+    background: rgba(15, 23, 42, 0.96);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1.75rem;
+    padding: 1.5rem;
+    box-shadow: var(--shadow);
+    display: grid;
+    gap: 1rem;
+}
+
+.folder-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.folder-modal-header h2 {
+    margin: 0;
+    font-size: 1.4rem;
+}
+
+.modal-description {
+    margin: 0.5rem 0 0;
+    color: var(--muted);
+    font-size: 0.95rem;
+}
+
+.close-modal {
+    width: 3rem;
+    height: 3rem;
+    border: none;
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text);
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+}
+
+.folder-browser-panel {
+    display: grid;
+    gap: 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1.5rem;
+    padding: 1rem;
+}
+
+.folder-browser-top {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.folder-path-label {
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-size: 0.75rem;
+    color: var(--muted);
+}
+
+.folder-path-text {
+    font-size: 0.95rem;
+    color: var(--text);
+    word-break: break-all;
+}
+
+.folder-browser-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.folder-action {
+    border: none;
+    border-radius: 999px;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text);
+    cursor: pointer;
+}
+
+.folder-list-items {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.65rem;
+    max-height: 240px;
+    overflow: auto;
+}
+
+.folder-item {
+    width: 100%;
+    text-align: left;
+    border: none;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 0.95rem 1rem;
+    border-radius: 1rem;
+    color: var(--text);
+    cursor: pointer;
+    transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.folder-item:hover {
+    background: rgba(56, 189, 248, 0.14);
+    transform: translateX(2px);
+}
+
+.folder-add-form {
+    display: grid;
+    gap: 1rem;
+}
+
+.folder-add-form label {
+    display: grid;
+    gap: 0.5rem;
+    color: var(--text);
+    font-size: 0.95rem;
+}
+
+.folder-add-form input {
+    width: 100%;
+    padding: 0.95rem 1rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text);
+    outline: none;
+}
+
+.folder-modal-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.primary-btn,
+.secondary-btn {
+    border: none;
+    border-radius: 1rem;
+    padding: 0.95rem 1.25rem;
+    cursor: pointer;
+}
+
+.primary-btn {
+    background: linear-gradient(135deg, #38bdf8, #7c3aed);
+    color: white;
+}
+
+.secondary-btn {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text);
+}
+
+@media (max-width: 820px) {
+    .folder-modal-card {
+        max-height: 100vh;
+        padding: 1rem;
+    }
+}
+
 .branding {
     display: flex;
     align-items: center;

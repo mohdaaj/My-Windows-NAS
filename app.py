@@ -1,15 +1,49 @@
-from flask import Flask, render_template, send_from_directory, abort
+from flask import Flask, render_template, send_from_directory, abort, request, redirect, url_for, jsonify
+import json
 import os
 import socket
+import string
 from datetime import datetime
 
 app = Flask(__name__)
 
-# Change these to the folders you want to share
-SHARED_FOLDERS = {
+CONFIG_FILE = "shared_folders.json"
+DEFAULT_SHARED_FOLDERS = {
     "Movies": r"C:\Users\Public\Videos",
     "Documents": r"C:\Users\Public\Documents"
 }
+
+
+def load_shared_folders():
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as config_file:
+                data = json.load(config_file)
+                if isinstance(data, dict):
+                    return data
+        except Exception:
+            pass
+    return DEFAULT_SHARED_FOLDERS.copy()
+
+
+def save_shared_folders(folders):
+    try:
+        with open(CONFIG_FILE, "w", encoding="utf-8") as config_file:
+            json.dump(folders, config_file, indent=4)
+    except Exception:
+        pass
+
+
+def list_root_drives():
+    drives = []
+    for letter in string.ascii_uppercase:
+        drive = f"{letter}:\\"
+        if os.path.exists(drive):
+            drives.append(drive)
+    return drives
+
+
+SHARED_FOLDERS = load_shared_folders()
 
 FILE_ICONS = {
     "mp4": "fa-file-video",
@@ -97,6 +131,9 @@ def index():
         folder_name=None,
         files=[],
         total_size=None,
+        default_folders=DEFAULT_SHARED_FOLDERS.keys(),
+        message=request.args.get("message", ""),
+        message_type=request.args.get("message_type", "success"),
     )
 
 
@@ -135,6 +172,9 @@ def view_folder(folder_name):
         folders=SHARED_FOLDERS.keys(),
         folder_stats=build_folder_stats(),
         total_size=format_size(total_size) if total_size else "0 B",
+        default_folders=DEFAULT_SHARED_FOLDERS.keys(),
+        message="",
+        message_type="success",
     )
 
 
@@ -144,6 +184,58 @@ def download_file(folder_name, filename):
     if not directory or not os.path.exists(directory):
         abort(404)
     return send_from_directory(directory, filename, as_attachment=True)
+
+
+@app.route("/browse-folders")
+def browse_folders():
+    requested_path = request.args.get("path", "")
+    if requested_path:
+        norm_path = os.path.abspath(requested_path)
+        if os.path.isdir(norm_path):
+            try:
+                entries = [entry for entry in os.listdir(norm_path) if os.path.isdir(os.path.join(norm_path, entry))]
+                entries.sort(key=str.lower)
+                parent = os.path.dirname(norm_path)
+                if parent == norm_path:
+                    parent = ""
+                return jsonify({"path": norm_path, "entries": entries, "parent": parent})
+            except OSError:
+                pass
+
+    drives = list_root_drives()
+    return jsonify({"path": "", "entries": drives, "parent": ""})
+
+
+@app.route("/add-folder", methods=["POST"])
+def add_folder():
+    folder_name = request.form.get("folder_name", "").strip()
+    folder_path = request.form.get("folder_path", "").strip()
+
+    if not folder_name or not folder_path:
+        return redirect(url_for("index", message="Enter both folder name and path.", message_type="error"))
+
+    if folder_name in SHARED_FOLDERS:
+        return redirect(url_for("index", message="Folder name already exists.", message_type="error"))
+
+    folder_path = os.path.abspath(folder_path)
+    if not os.path.isdir(folder_path):
+        return redirect(url_for("index", message="Invalid folder path.", message_type="error"))
+
+    if folder_path in SHARED_FOLDERS.values():
+        return redirect(url_for("index", message="Folder path is already shared.", message_type="error"))
+
+    SHARED_FOLDERS[folder_name] = folder_path
+    save_shared_folders(SHARED_FOLDERS)
+    return redirect(url_for("index", message="Folder added successfully.", message_type="success"))
+
+
+@app.route("/remove-folder/<folder_name>", methods=["POST"])
+def remove_folder(folder_name):
+    if folder_name in SHARED_FOLDERS and folder_name not in DEFAULT_SHARED_FOLDERS:
+        SHARED_FOLDERS.pop(folder_name, None)
+        save_shared_folders(SHARED_FOLDERS)
+        return redirect(url_for("index", message="Folder removed successfully.", message_type="success"))
+    return redirect(url_for("index", message="Cannot remove default folder.", message_type="error"))
 
 
 def get_ip():
