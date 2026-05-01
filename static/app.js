@@ -5,12 +5,25 @@ const fileGrid = document.querySelector('#fileGrid');
 const mobileMenuToggle = document.querySelector('#mobileMenuToggle');
 const sidebar = document.querySelector('#sidebar');
 const sidebarBackdrop = document.querySelector('#sidebarBackdrop');
+const navLinks = document.querySelectorAll('.nav-item');
+const openFolderModalBtn = document.querySelector('#openFolderModal');
+const openFolderModalSidebarBtn = document.querySelector('#openFolderModalSidebar');
+const refreshPageBtn = document.querySelector('#refreshPage');
+const folderModal = document.querySelector('#folderModal');
+const folderModalClose = document.querySelector('#closeFolderModal');
+const firstModalInput = document.querySelector('.folder-add-form input');
+const previewModal = document.querySelector('#previewModal');
+const previewVideo = document.querySelector('#previewVideo');
+const closePreviewModalBtn = document.querySelector('#closePreviewModal');
 
-if (searchInput) {
+const setBodyModalState = (isOpen) => {
+  document.body.classList.toggle('modal-open', isOpen);
+};
+
+if (searchInput && fileGrid) {
   searchInput.addEventListener('input', (event) => {
     const query = event.target.value.toLowerCase().trim();
     const cards = fileGrid.querySelectorAll('.file-card');
-
     cards.forEach((card) => {
       const name = card.dataset.name || '';
       const match = name.includes(query);
@@ -33,17 +46,13 @@ if (viewGridBtn && viewListBtn && fileGrid) {
 const openSidebar = () => {
   if (!sidebar) return;
   sidebar.classList.add('open');
-  if (sidebarBackdrop) {
-    sidebarBackdrop.classList.add('active');
-  }
+  if (sidebarBackdrop) sidebarBackdrop.classList.add('active');
 };
 
 const closeSidebar = () => {
   if (!sidebar) return;
   sidebar.classList.remove('open');
-  if (sidebarBackdrop) {
-    sidebarBackdrop.classList.remove('active');
-  }
+  if (sidebarBackdrop) sidebarBackdrop.classList.remove('active');
 };
 
 if (mobileMenuToggle) {
@@ -60,70 +69,17 @@ if (sidebarBackdrop) {
   sidebarBackdrop.addEventListener('click', closeSidebar);
 }
 
-window.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape') {
-    closeSidebar();
-    closeFolderModal();
-  }
-});
-
-const openFolderModalBtn = document.querySelector('#openFolderModal');
-const openFolderModalSidebarBtn = document.querySelector('#openFolderModalSidebar');
-const folderModal = document.querySelector('#folderModal');
-const folderModalClose = document.querySelector('#closeFolderModal');
-const browsePathText = document.querySelector('#browsePathText');
-const folderList = document.querySelector('#folderList');
-const manualFolderPath = document.querySelector('#manualFolderPath');
-const chooseCurrentFolderBtn = document.querySelector('#chooseCurrentFolderBtn');
-const parentFolderBtn = document.querySelector('#parentFolderBtn');
-const refreshFolderBtn = document.querySelector('#refreshFolderBtn');
-
-let currentBrowsePath = '';
-let parentBrowsePath = '';
-
-const buildBrowsePath = (base, entry) => {
-  if (!base) return entry;
-  if (base.endsWith('\\') || base.endsWith('/')) return `${base}${entry}`;
-  return `${base}\\${entry}`;
-};
-
 const closeFolderModal = () => {
   if (!folderModal) return;
   folderModal.classList.remove('active');
+  setBodyModalState(false);
 };
 
 const openFolderModal = () => {
   if (!folderModal) return;
   folderModal.classList.add('active');
-  fetchFolderPaths();
-};
-
-const renderFolderEntries = (data) => {
-  currentBrowsePath = data.path || '';
-  parentBrowsePath = data.parent || '';
-  browsePathText.textContent = currentBrowsePath || 'Choose a drive or folder';
-  if (manualFolderPath) {
-    manualFolderPath.value = currentBrowsePath;
-  }
-  parentFolderBtn.disabled = !parentBrowsePath;
-  folderList.innerHTML = data.entries
-    .map((entry) => {
-      const folderPath = data.path ? buildBrowsePath(data.path, entry) : entry;
-      return `<li><button type="button" class="folder-item" data-path="${folderPath}">${entry}</button></li>`;
-    })
-    .join('');
-};
-
-const fetchFolderPaths = async (path = '') => {
-  const url = `/browse-folders${path ? `?path=${encodeURIComponent(path)}` : ''}`;
-  try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error('Failed to load folders');
-    const data = await response.json();
-    renderFolderEntries(data);
-  } catch (error) {
-    console.error(error);
-  }
+  setBodyModalState(true);
+  if (firstModalInput) firstModalInput.focus();
 };
 
 if (openFolderModalBtn) {
@@ -134,8 +90,16 @@ if (openFolderModalSidebarBtn) {
   openFolderModalSidebarBtn.addEventListener('click', openFolderModal);
 }
 
+if (refreshPageBtn) {
+  refreshPageBtn.addEventListener('click', () => window.location.reload());
+}
+
 if (folderModalClose) {
   folderModalClose.addEventListener('click', closeFolderModal);
+}
+
+if (closePreviewModalBtn) {
+  closePreviewModalBtn.addEventListener('click', closePreviewModal);
 }
 
 if (folderModal) {
@@ -146,33 +110,119 @@ if (folderModal) {
   });
 }
 
-if (folderList) {
-  folderList.addEventListener('click', (event) => {
-    const target = event.target.closest('.folder-item');
-    if (!target) return;
-    const nextPath = target.dataset.path;
-    fetchFolderPaths(nextPath);
-  });
-}
-
-if (chooseCurrentFolderBtn) {
-  chooseCurrentFolderBtn.addEventListener('click', () => {
-    if (manualFolderPath && currentBrowsePath) {
-      manualFolderPath.value = currentBrowsePath;
+if (previewModal) {
+  previewModal.addEventListener('click', (event) => {
+    if (event.target === previewModal) {
+      closePreviewModal();
     }
   });
 }
 
-if (parentFolderBtn) {
-  parentFolderBtn.addEventListener('click', () => {
-    if (parentBrowsePath) {
-      fetchFolderPaths(parentBrowsePath);
+if (fileGrid) {
+  fileGrid.addEventListener('click', (event) => {
+    const previewButton = event.target.closest('.preview-btn');
+    if (!previewButton) return;
+    const previewUrl = previewButton.dataset.previewUrl;
+    if (previewUrl) {
+      openPreviewModal(previewUrl);
     }
   });
 }
 
-if (refreshFolderBtn) {
-  refreshFolderBtn.addEventListener('click', () => {
-    fetchFolderPaths(currentBrowsePath);
+function getFileCards() {
+  return Array.from(document.querySelectorAll('.file-card'));
+}
+
+function getGridColumns() {
+  if (!fileGrid) return 1;
+  return getComputedStyle(fileGrid).gridTemplateColumns.split(' ').filter(Boolean).length || 1;
+}
+
+function focusAdjacentCard(delta) {
+  const cards = getFileCards();
+  const activeIndex = cards.indexOf(document.activeElement);
+  if (activeIndex < 0) return;
+  const nextIndex = activeIndex + delta;
+  if (nextIndex >= 0 && nextIndex < cards.length) {
+    cards[nextIndex].focus();
+  }
+}
+
+function handleRemoteNavigation(event) {
+  if (!fileGrid) return;
+  const cards = getFileCards();
+  if (!cards.length) return;
+  const activeIndex = cards.indexOf(document.activeElement);
+  if (event.key === 'ArrowRight' && activeIndex >= 0) {
+    event.preventDefault();
+    focusAdjacentCard(1);
+    return;
+  }
+  if (event.key === 'ArrowLeft' && activeIndex >= 0) {
+    event.preventDefault();
+    focusAdjacentCard(-1);
+    return;
+  }
+  if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    const columns = getGridColumns();
+    if (activeIndex < 0) {
+      cards[0].focus();
+      return;
+    }
+    focusAdjacentCard(columns);
+    return;
+  }
+  if (event.key === 'ArrowUp' && activeIndex >= 0) {
+    event.preventDefault();
+    const columns = getGridColumns();
+    focusAdjacentCard(-columns);
+    return;
+  }
+  if (event.key === 'Enter' && activeIndex >= 0) {
+    event.preventDefault();
+    const card = cards[activeIndex];
+    const previewButton = card.querySelector('.preview-btn');
+    const fileLink = card.querySelector('.file-card-link');
+    if (previewButton) {
+      previewButton.click();
+      return;
+    }
+    if (fileLink) {
+      fileLink.click();
+    }
+  }
+}
+
+if (navLinks.length) {
+  navLinks.forEach((link) => {
+    link.addEventListener('click', closeSidebar);
   });
 }
+
+window.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') {
+    closeSidebar();
+    closeFolderModal();
+    closePreviewModal();
+  }
+  handleRemoteNavigation(event);
+});
+
+function openPreviewModal(url) {
+  if (!previewModal || !previewVideo) return;
+  previewVideo.src = url;
+  previewModal.classList.add('active');
+  setBodyModalState(true);
+  previewVideo.play().catch(() => {});
+}
+
+function closePreviewModal() {
+  if (!previewModal || !previewVideo) return;
+  previewVideo.pause();
+  previewVideo.removeAttribute('src');
+  previewVideo.load();
+  previewModal.classList.remove('active');
+  setBodyModalState(false);
+}
+

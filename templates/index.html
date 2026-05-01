@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -17,12 +17,15 @@
             </div>
         </div>
 
-        <div class="folder-heading">Storage</div>
+        <div class="folder-heading">Shared folders</div>
         <nav class="folder-list">
             {% for name in folders %}
                 <div class="folder-row">
                     <a href="{{ url_for('view_folder', folder_name=name) }}" class="nav-item {% if folder_name == name %}active{% endif %}">
-                        <span><i class="fas fa-folder"></i> {{ name }}</span>
+                        <div class="folder-preview">
+                            <span class="folder-title"><i class="fas fa-folder"></i> {{ name }}</span>
+                            <span class="folder-path">{{ folder_paths[name] }}</span>
+                        </div>
                         <span class="folder-count">{{ folder_stats[name] }}</span>
                     </a>
                     {% if name not in default_folders %}
@@ -42,32 +45,28 @@
         </div>
 
         <div class="sidebar-footer">
-            <div>Server</div>
-            <div class="server-status"><i class="fas fa-circle"></i> Online</div>
+            <div>
+                <div class="footer-label">Server</div>
+                <div class="server-status"><i class="fas fa-circle"></i> Online</div>
+            </div>
+            <div class="server-ip">http://{{ server_ip }}:5000</div>
         </div>
     </div>
-<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
     <div class="folder-modal" id="folderModal" aria-hidden="true">
         <div class="folder-modal-card" role="dialog" aria-modal="true" aria-labelledby="folderModalLabel">
             <div class="folder-modal-header">
                 <div>
-                    <h2 id="folderModalLabel">Share a folder from this device</h2>
-                    <p class="modal-description">Select a local folder path and give it a label to make it available in the NAS.</p>
+                    <h2 id="folderModalLabel">Share a folder from the NAS host</h2>
+                    <p class="modal-description">This interface only shares folders from the machine running the server. Enter the path to a host folder and a friendly label to make it available.</p>
                 </div>
                 <button id="closeFolderModal" class="close-modal" type="button" aria-label="Close modal"><i class="fas fa-times"></i></button>
             </div>
 
-            <div class="folder-browser-panel">
-                <div class="folder-browser-top">
-                    <div class="folder-path-label">Current browse path</div>
-                    <div id="browsePathText" class="folder-path-text">Choose a drive or folder</div>
-                </div>
-                <div class="folder-browser-actions">
-                    <button id="parentFolderBtn" class="folder-action" type="button">Up one level</button>
-                    <button id="refreshFolderBtn" class="folder-action" type="button">Refresh</button>
-                </div>
-                <ul id="folderList" class="folder-list-items"></ul>
+            <div class="server-folder-note">
+                <p>Only explicitly added folders are shared. The server cannot access files directly from your phone or remote browser.</p>
             </div>
 
             <form action="{{ url_for('add_folder') }}" method="post" class="folder-add-form">
@@ -81,7 +80,6 @@
                 </label>
                 <div class="folder-modal-buttons">
                     <button type="submit" class="primary-btn">Add shared folder</button>
-                    <button id="chooseCurrentFolderBtn" type="button" class="secondary-btn">Use current browser path</button>
                 </div>
             </form>
         </div>
@@ -98,6 +96,7 @@
                     <h1>{{ folder_name or 'Welcome Admin' }}</h1>
                     {% if folder_name %}
                         <p class="subtitle">{{ files|length }} files · {{ total_size }}</p>
+                        <p class="path-tag">Shared path: {{ folder_paths[folder_name] }}</p>
                     {% else %}
                         <p class="subtitle">Choose a shared folder to browse your library.</p>
                     {% endif %}
@@ -112,40 +111,102 @@
                     <i class="fas fa-plus"></i>
                     <span>Share folder</span>
                 </button>
+                <button id="refreshPage" class="view-toggle" type="button" title="Refresh list"><i class="fas fa-sync-alt"></i></button>
                 <button id="viewGrid" class="view-toggle active" type="button" title="Grid view"><i class="fas fa-th-large"></i></button>
                 <button id="viewList" class="view-toggle" type="button" title="List view"><i class="fas fa-list"></i></button>
             </div>
+            {% if folder_name %}
+                <div class="tv-hint">
+                    <i class="fas fa-tv"></i>
+                    Use the remote arrow keys to move between files. Press OK / Enter to play or select download.
+                </div>
+            {% endif %}
         </header>
 
         {% if message %}
             <div class="notice {{ message_type }}">{{ message }}</div>
         {% endif %}
 
+        {% if folder_name %}
+            <section class="upload-panel">
+                <form action="{{ url_for('upload_files', folder_name=folder_name) }}" method="post" enctype="multipart/form-data" class="upload-form">
+                    <div class="upload-panel-grid">
+                        <label>
+                            Upload files or videos
+                            <input name="upload_files" type="file" multiple accept="*/*" required>
+                        </label>
+                        <label>
+                            New subfolder name (optional)
+                            <input name="subfolder_name" type="text" placeholder="Create inside {{ folder_name }}">
+                        </label>
+                    </div>
+                    <div class="upload-actions">
+                        <button type="submit" class="primary-btn">Upload to {{ folder_name }}</button>
+                        <p class="upload-help">Drop files from your phone or computer, or create a subfolder before upload.</p>
+                    </div>
+                </form>
+            </section>
+        {% endif %}
+
         <section class="file-grid" id="fileGrid">
             {% if files %}
                 {% for file in files %}
-                    <a href="{{ url_for('download_file', folder_name=folder_name, filename=file.name) }}" class="file-card" target="_blank" data-name="{{ file.name|lower }}">
-                        <div class="file-card-meta">
-                            <div class="file-icon-box">
-                                <i class="file-icon fas {{ file.icon }}"></i>
+                    <div class="file-card" tabindex="0" data-name="{{ file.name|lower }}" aria-label="Open {{ file.name }}">
+                        <a href="{{ url_for('download_file', folder_name=folder_name, filename=file.name) }}" class="file-card-link" target="_blank">
+                            <div class="file-card-meta">
+                                <div class="file-icon-box">
+                                    <i class="file-icon fas {{ file.icon }}"></i>
+                                </div>
+                                <div>
+                                    <div class="file-name">{{ file.name }}</div>
+                                    <div class="file-details">{{ file.type }} · {{ file.size }} · {{ file.modified }}</div>
+                                </div>
                             </div>
-                            <div>
-                                <div class="file-name">{{ file.name }}</div>
-                                <div class="file-details">{{ file.type }} · {{ file.size }} · {{ file.modified }}</div>
-                            </div>
+                            <div class="download-hint">Download</div>
+                        </a>
+                        <div class="file-actions">
+                            {% if file.is_video %}
+                                <button type="button" class="preview-btn" data-preview-url="{{ url_for('preview_file', folder_name=folder_name, filename=file.name) }}">
+                                    <i class="fas fa-play"></i>
+                                    Play
+                                </button>
+                            {% endif %}
+                            <a class="download-link" href="{{ url_for('download_file', folder_name=folder_name, filename=file.name) }}" target="_blank">
+                                <i class="fas fa-download"></i>
+                                Download
+                            </a>
                         </div>
-                        <div class="download-hint">Download</div>
-                    </a>
+                    </div>
                 {% endfor %}
+            {% elif folder_name %}
+                <div class="empty-state">
+                    <i class="fas fa-folder-open"></i>
+                    <h2>No files found</h2>
+                    <p>The shared folder is empty or contains no files that can be displayed.</p>
+                </div>
             {% else %}
                 <div class="empty-state">
                     <i class="fas fa-cloud-upload-alt"></i>
-                    <h2>No files ready yet</h2>
-                    <p>Select a folder from the sidebar to browse your shared files.</p>
+                    <h2>No folder selected</h2>
+                    <p>Add a shared folder or choose one from the sidebar to begin.</p>
                 </div>
             {% endif %}
         </section>
+
+        <div class="preview-modal" id="previewModal" aria-hidden="true">
+            <div class="preview-card" role="dialog" aria-modal="true" aria-labelledby="previewModalLabel">
+                <div class="preview-header">
+                    <div>
+                        <h2 id="previewModalLabel">Video Preview</h2>
+                        <p class="preview-description">Play shared videos directly in the browser.</p>
+                    </div>
+                    <button id="closePreviewModal" class="close-modal" type="button" aria-label="Close preview"><i class="fas fa-times"></i></button>
+                </div>
+                <video id="previewVideo" class="preview-video" controls preload="metadata"></video>
+            </div>
+        </div>
     </main>
+
     <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>
