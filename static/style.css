@@ -486,13 +486,18 @@ body::before {
 }
 
 .view-toggle {
-    width: 3rem;
+    min-width: 3rem;
     height: 3rem;
     border: none;
     border-radius: 1rem;
     background: rgba(255, 255, 255, 0.04);
     color: var(--text);
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0 0.9rem;
     transition: background 0.25s ease, transform 0.25s ease;
 }
 
@@ -500,6 +505,34 @@ body::before {
 .view-toggle:hover {
     background: rgba(56, 189, 248, 0.18);
     transform: translateY(-1px);
+}
+
+.open-folder-btn {
+    padding: 0 1rem;
+    min-width: 5.5rem;
+}
+
+.sidebar-action {
+    margin-top: 1rem;
+}
+
+.sidebar-add-folder {
+    width: 100%;
+    border: none;
+    border-radius: 1.25rem;
+    padding: 0.95rem 1rem;
+    background: rgba(56, 189, 248, 0.15);
+    color: var(--text);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    font-weight: 700;
+}
+
+.sidebar-add-folder:hover {
+    background: rgba(56, 189, 248, 0.25);
 }
 
 .file-grid {

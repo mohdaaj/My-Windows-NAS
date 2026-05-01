@@ -34,6 +34,13 @@
             {% endfor %}
         </nav>
 
+        <div class="sidebar-action">
+            <button id="openFolderModalSidebar" class="sidebar-add-folder" type="button">
+                <i class="fas fa-plus"></i>
+                <span>Share a folder</span>
+            </button>
+        </div>
+
         <div class="sidebar-footer">
             <div>Server</div>
             <div class="server-status"><i class="fas fa-circle"></i> Online</div>
@@ -101,7 +108,10 @@
                     <i class="fas fa-search"></i>
                     <input id="fileSearch" type="search" placeholder="Search files..." aria-label="Search files">
                 </div>
-                <button id="openFolderModal" class="view-toggle" type="button" title="Add shared folder"><i class="fas fa-plus"></i></button>
+                <button id="openFolderModal" class="view-toggle open-folder-btn" type="button" title="Add shared folder">
+                    <i class="fas fa-plus"></i>
+                    <span>Share folder</span>
+                </button>
                 <button id="viewGrid" class="view-toggle active" type="button" title="Grid view"><i class="fas fa-th-large"></i></button>
                 <button id="viewList" class="view-toggle" type="button" title="List view"><i class="fas fa-list"></i></button>
             </div>

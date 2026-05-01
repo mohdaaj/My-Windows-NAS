@@ -68,6 +68,7 @@ window.addEventListener('keydown', (event) => {
 });
 
 const openFolderModalBtn = document.querySelector('#openFolderModal');
+const openFolderModalSidebarBtn = document.querySelector('#openFolderModalSidebar');
 const folderModal = document.querySelector('#folderModal');
 const folderModalClose = document.querySelector('#closeFolderModal');
 const browsePathText = document.querySelector('#browsePathText');
@@ -127,6 +128,10 @@ const fetchFolderPaths = async (path = '') => {
 
 if (openFolderModalBtn) {
   openFolderModalBtn.addEventListener('click', openFolderModal);
+}
+
+if (openFolderModalSidebarBtn) {
+  openFolderModalSidebarBtn.addEventListener('click', openFolderModal);
 }
 
 if (folderModalClose) {
