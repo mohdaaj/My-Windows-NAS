@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyNAS</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <main class="container">
+        <header>
+            <h1>PyNAS</h1>
+            <p>Shared folders on this Windows NAS</p>
+        </header>
+
+        <section class="panel">
+            <h2>Shared folders</h2>
+            <ul class="folder-list">
+                {% for folder in folders %}
+                    <li><a href="/view/{{ folder }}">{{ folder }}</a></li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        {% if folder_name %}
+        <section class="panel">
+            <div class="panel-header">
+                <h2>Contents of {{ folder_name }}</h2>
+                <a class="back-link" href="/">Back</a>
+            </div>
+            {% if files %}
+                <ul class="file-list">
+                    {% for file in files %}
+                        <li><a href="/download/{{ folder_name }}/{{ file }}">{{ file }}</a></li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>No files found in this folder.</p>
+            {% endif %}
+        </section>
+        {% endif %}
+    </main>
+</body>
+</html>
