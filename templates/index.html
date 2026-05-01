@@ -3,209 +3,208 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PyNAS | Modern Storage</title>
+    <title>PyTV</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-    <div class="sidebar" id="sidebar">
-        <div class="branding">
-            <div class="logo-icon"><i class="fas fa-server"></i></div>
-            <div>
-                <div class="logo-text">PyNAS</div>
-                <div class="logo-subtitle">Your local media hub</div>
-            </div>
-        </div>
 
-        <div class="folder-heading">Shared folders</div>
-        <nav class="folder-list">
-            {% for name in folders %}
-                <div class="folder-row">
-                    <a href="{{ url_for('view_folder', folder_name=name) }}" class="nav-item {% if folder_name == name %}active{% endif %}">
-                        <div class="folder-preview">
-                            <span class="folder-title"><i class="fas fa-folder"></i> {{ name }}</span>
-                            <span class="folder-path">{{ folder_paths[name] }}</span>
-                        </div>
-                        <span class="folder-count">{{ folder_stats[name] }}</span>
-                    </a>
-                    {% if name not in default_folders %}
-                        <form action="{{ url_for('remove_folder', folder_name=name) }}" method="post" class="remove-folder-form">
-                            <button type="submit" class="remove-folder-btn" title="Remove shared folder"><i class="fas fa-trash"></i></button>
-                        </form>
-                    {% endif %}
+    <!-- FULLSCREEN VIDEO PLAYER OVERLAY -->
+    <div class="tv-player-overlay" id="playerOverlay" aria-hidden="true">
+        <video id="mainPlayer" playsinline preload="metadata"></video>
+        <div class="player-ui" id="playerUI">
+            <div class="player-top-bar">
+                <button class="player-back-btn" id="playerBack" aria-label="Back to library">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Back</span>
+                </button>
+                <div class="player-title-area">
+                    <div class="player-now-label">Now Playing</div>
+                    <div class="player-filename" id="playerFilename">—</div>
                 </div>
-            {% endfor %}
-        </nav>
-
-        <div class="sidebar-action">
-            <button id="openFolderModalSidebar" class="sidebar-add-folder" type="button">
-                <i class="fas fa-plus"></i>
-                <span>Share a folder</span>
-            </button>
-        </div>
-
-        <div class="sidebar-footer">
-            <div>
-                <div class="footer-label">Server</div>
-                <div class="server-status"><i class="fas fa-circle"></i> Online</div>
             </div>
-            <div class="server-ip">http://{{ server_ip }}:5000</div>
+            <div class="player-controls" id="playerControls">
+                <div class="player-progress-wrap">
+                    <span class="player-time" id="playerCurrentTime">0:00</span>
+                    <div class="player-progress-bar" id="progressBar">
+                        <div class="player-progress-fill" id="progressFill"></div>
+                        <div class="player-progress-thumb" id="progressThumb"></div>
+                    </div>
+                    <span class="player-time" id="playerDuration">0:00</span>
+                </div>
+                <div class="player-btn-row">
+                    <button class="ctrl-btn" id="btnRewind" title="Rewind 10s"><i class="fas fa-rotate-left"></i><span>-10s</span></button>
+                    <button class="ctrl-btn ctrl-play" id="btnPlayPause" title="Play/Pause"><i class="fas fa-play" id="playIcon"></i></button>
+                    <button class="ctrl-btn" id="btnForward" title="Forward 10s"><i class="fas fa-rotate-right"></i><span>+10s</span></button>
+                    <button class="ctrl-btn ctrl-fullscreen" id="btnFullscreen" title="Fullscreen"><i class="fas fa-expand"></i></button>
+                </div>
+            </div>
         </div>
+        <div class="player-hint" id="playerHint">Press <kbd>OK</kbd> or <kbd>Space</kbd> to play/pause &nbsp;·&nbsp; <kbd>←→</kbd> skip &nbsp;·&nbsp; <kbd>Esc</kbd> to go back</div>
     </div>
 
-    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
-
-    <div class="folder-modal" id="folderModal" aria-hidden="true">
-        <div class="folder-modal-card" role="dialog" aria-modal="true" aria-labelledby="folderModalLabel">
-            <div class="folder-modal-header">
-                <div>
-                    <h2 id="folderModalLabel">Share a folder from the NAS host</h2>
-                    <p class="modal-description">This interface only shares folders from the machine running the server. Enter the path to a host folder and a friendly label to make it available.</p>
-                </div>
-                <button id="closeFolderModal" class="close-modal" type="button" aria-label="Close modal"><i class="fas fa-times"></i></button>
+    <!-- ADD LIBRARY MODAL -->
+    <div class="modal-overlay" id="folderModal" aria-hidden="true">
+        <div class="modal-card" role="dialog" aria-modal="true">
+            <div class="modal-header">
+                <h2>Add Library</h2>
+                <button class="modal-close" id="closeFolderModal" aria-label="Close"><i class="fas fa-times"></i></button>
             </div>
-
-            <div class="server-folder-note">
-                <p>Only explicitly added folders are shared. The server cannot access files directly from your phone or remote browser.</p>
-            </div>
-
-            <form action="{{ url_for('add_folder') }}" method="post" class="folder-add-form">
+            <form action="{{ url_for('add_folder') }}" method="post" class="modal-form">
                 <label>
-                    Folder label
-                    <input name="folder_name" type="text" placeholder="Media Library" required>
+                    Library Name
+                    <input name="folder_name" type="text" placeholder="Movies" required autocomplete="off">
                 </label>
                 <label>
-                    Folder path
-                    <input id="manualFolderPath" name="folder_path" type="text" placeholder="C:\\Users\\Public\\Videos" required>
+                    Folder Path on Host
+                    <input name="folder_path" type="text" placeholder="C:\Users\Public\Videos" required autocomplete="off">
                 </label>
-                <div class="folder-modal-buttons">
-                    <button type="submit" class="primary-btn">Add shared folder</button>
-                </div>
+                <button type="submit" class="btn btn-primary">Add Library</button>
             </form>
         </div>
     </div>
 
-    <main class="content">
-        <header class="topbar">
-            <div class="topbar-left">
-                <button id="mobileMenuToggle" class="mobile-menu-btn" type="button" aria-label="Open menu">
-                    <i class="fas fa-bars"></i>
-                </button>
-                <div>
-                    <p class="eyebrow">Dashboard</p>
-                    <h1>{{ folder_name or 'Welcome Admin' }}</h1>
-                    {% if folder_name %}
-                        <p class="subtitle">{{ files|length }} files · {{ total_size }}</p>
-                        <p class="path-tag">Shared path: {{ folder_paths[folder_name] }}</p>
-                    {% else %}
-                        <p class="subtitle">Choose a shared folder to browse your library.</p>
-                    {% endif %}
+    <!-- MAIN TV SHELL -->
+    <div class="tv-shell" id="tvShell">
+
+        <!-- HOME SCREEN -->
+        <div class="screen" id="screenHome">
+            <div class="tv-header">
+                <div class="brand">
+                    <div class="brand-icon"><i class="fas fa-tv"></i></div>
+                    <div>
+                        <div class="brand-name">PyTV</div>
+                        <div class="brand-sub">Local Streaming</div>
+                    </div>
+                </div>
+                <div class="server-pill">
+                    <i class="fas fa-circle" style="color:#4ade80;font-size:0.6rem"></i>
+                    http://{{ server_ip }}:5000
                 </div>
             </div>
-            <div class="actions">
-                <div class="search-wrap">
-                    <i class="fas fa-search"></i>
-                    <input id="fileSearch" type="search" placeholder="Search files..." aria-label="Search files">
-                </div>
-                <button id="openFolderModal" class="view-toggle open-folder-btn" type="button" title="Add shared folder">
-                    <i class="fas fa-plus"></i>
-                    <span>Share folder</span>
-                </button>
-                <button id="refreshPage" class="view-toggle" type="button" title="Refresh list"><i class="fas fa-sync-alt"></i></button>
-                <button id="viewGrid" class="view-toggle active" type="button" title="Grid view"><i class="fas fa-th-large"></i></button>
-                <button id="viewList" class="view-toggle" type="button" title="List view"><i class="fas fa-list"></i></button>
-            </div>
-            {% if folder_name %}
-                <div class="tv-hint">
-                    <i class="fas fa-tv"></i>
-                    Use the remote arrow keys to move between files. Press OK / Enter to play or select download.
-                </div>
+
+            {% if message %}
+                <div class="tv-notice {{ message_type }}">{{ message }}</div>
             {% endif %}
-        </header>
 
-        {% if message %}
-            <div class="notice {{ message_type }}">{{ message }}</div>
-        {% endif %}
-
-        {% if folder_name %}
-            <section class="upload-panel">
-                <form action="{{ url_for('upload_files', folder_name=folder_name) }}" method="post" enctype="multipart/form-data" class="upload-form">
-                    <div class="upload-panel-grid">
-                        <label>
-                            Upload files or videos
-                            <input name="upload_files" type="file" multiple accept="*/*" required>
-                        </label>
-                        <label>
-                            New subfolder name (optional)
-                            <input name="subfolder_name" type="text" placeholder="Create inside {{ folder_name }}">
-                        </label>
-                    </div>
-                    <div class="upload-actions">
-                        <button type="submit" class="primary-btn">Upload to {{ folder_name }}</button>
-                        <p class="upload-help">Drop files from your phone or computer, or create a subfolder before upload.</p>
-                    </div>
-                </form>
-            </section>
-        {% endif %}
-
-        <section class="file-grid" id="fileGrid">
-            {% if files %}
-                {% for file in files %}
-                    <div class="file-card" tabindex="0" data-name="{{ file.name|lower }}" aria-label="Open {{ file.name }}">
-                        <a href="{{ url_for('download_file', folder_name=folder_name, filename=file.name) }}" class="file-card-link" target="_blank">
-                            <div class="file-card-meta">
-                                <div class="file-icon-box">
-                                    <i class="file-icon fas {{ file.icon }}"></i>
-                                </div>
-                                <div>
-                                    <div class="file-name">{{ file.name }}</div>
-                                    <div class="file-details">{{ file.type }} · {{ file.size }} · {{ file.modified }}</div>
-                                </div>
-                            </div>
-                            <div class="download-hint">Download</div>
+            {% if folders|list|length > 0 %}
+                <div class="section-label">Your Libraries</div>
+                <div class="library-row" id="libraryRow">
+                    {% for name in folders %}
+                        <a href="{{ url_for('view_folder', folder_name=name) }}"
+                           class="lib-card focusable"
+                           data-nav-group="libraries"
+                           tabindex="0">
+                            <div class="lib-card-icon"><i class="fas fa-folder-open"></i></div>
+                            <div class="lib-card-name">{{ name }}</div>
+                            <div class="lib-card-count">{{ folder_stats[name] }} files</div>
                         </a>
-                        <div class="file-actions">
-                            {% if file.is_video %}
-                                <button type="button" class="preview-btn" data-preview-url="{{ url_for('preview_file', folder_name=folder_name, filename=file.name) }}">
-                                    <i class="fas fa-play"></i>
-                                    Play
-                                </button>
-                            {% endif %}
-                            <a class="download-link" href="{{ url_for('download_file', folder_name=folder_name, filename=file.name) }}" target="_blank">
-                                <i class="fas fa-download"></i>
-                                Download
-                            </a>
-                        </div>
-                    </div>
-                {% endfor %}
-            {% elif folder_name %}
-                <div class="empty-state">
-                    <i class="fas fa-folder-open"></i>
-                    <h2>No files found</h2>
-                    <p>The shared folder is empty or contains no files that can be displayed.</p>
+                    {% endfor %}
+                    <button class="lib-card lib-card-add focusable"
+                            id="openFolderModalBtn"
+                            data-nav-group="libraries"
+                            tabindex="0">
+                        <div class="lib-card-icon"><i class="fas fa-plus"></i></div>
+                        <div class="lib-card-name">Add Library</div>
+                    </button>
                 </div>
             {% else %}
-                <div class="empty-state">
-                    <i class="fas fa-cloud-upload-alt"></i>
-                    <h2>No folder selected</h2>
-                    <p>Add a shared folder or choose one from the sidebar to begin.</p>
+                <div class="empty-home">
+                    <i class="fas fa-tv"></i>
+                    <h2>Welcome to PyTV</h2>
+                    <p>Add a library to start streaming your local videos on this TV.</p>
+                    <button class="btn btn-primary focusable" id="openFolderModalBtnEmpty" tabindex="0">
+                        <i class="fas fa-plus"></i> Add Library
+                    </button>
                 </div>
             {% endif %}
-        </section>
-
-        <div class="preview-modal" id="previewModal" aria-hidden="true">
-            <div class="preview-card" role="dialog" aria-modal="true" aria-labelledby="previewModalLabel">
-                <div class="preview-header">
-                    <div>
-                        <h2 id="previewModalLabel">Video Preview</h2>
-                        <p class="preview-description">Play shared videos directly in the browser.</p>
-                    </div>
-                    <button id="closePreviewModal" class="close-modal" type="button" aria-label="Close preview"><i class="fas fa-times"></i></button>
-                </div>
-                <video id="previewVideo" class="preview-video" controls preload="metadata"></video>
-            </div>
         </div>
-    </main>
+
+        <!-- FOLDER / LIBRARY SCREEN -->
+        {% if folder_name %}
+        <div class="screen" id="screenFolder">
+            <div class="tv-header">
+                <a href="{{ url_for('index') }}" class="back-link focusable" tabindex="0">
+                    <i class="fas fa-arrow-left"></i> Libraries
+                </a>
+                <div class="folder-title-wrap">
+                    <h1 class="folder-title">{{ folder_name }}</h1>
+                    <span class="folder-meta">{{ files|length }} videos · {{ total_size }}</span>
+                </div>
+                <div class="server-pill">
+                    <i class="fas fa-circle" style="color:#4ade80;font-size:0.6rem"></i>
+                    http://{{ server_ip }}:5000
+                </div>
+            </div>
+
+            {% if message %}
+                <div class="tv-notice {{ message_type }}">{{ message }}</div>
+            {% endif %}
+
+            {% if files %}
+                <div class="section-label">Videos</div>
+                <div class="file-grid" id="fileGrid">
+                    {% for file in files %}
+                        <div class="file-card focusable {% if file.is_video %}is-video{% endif %}"
+                             tabindex="0"
+                             data-nav-group="files"
+                             data-preview-url="{% if file.is_video %}{{ url_for('preview_file', folder_name=folder_name, filename=file.name) }}{% endif %}"
+                             data-file-name="{{ file.name }}"
+                             data-is-video="{{ 'true' if file.is_video else 'false' }}">
+                            <div class="file-card-thumb">
+                                <i class="fas {{ file.icon }}"></i>
+                                {% if file.is_video %}
+                                    <div class="play-overlay"><i class="fas fa-play"></i></div>
+                                {% endif %}
+                            </div>
+                            <div class="file-card-body">
+                                <div class="file-card-name">{{ file.name }}</div>
+                                <div class="file-card-meta">{{ file.type }} · {{ file.size }}</div>
+                                {% if not file.is_video %}
+                                    <a class="btn btn-sm focusable"
+                                       href="{{ url_for('download_file', folder_name=folder_name, filename=file.name) }}"
+                                       target="_blank" tabindex="-1">
+                                        <i class="fas fa-download"></i> Download
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Upload section (tucked at bottom, accessible but not primary) -->
+                <details class="upload-drawer">
+                    <summary class="upload-drawer-toggle focusable" tabindex="0">
+                        <i class="fas fa-upload"></i> Upload files to this library
+                    </summary>
+                    <form action="{{ url_for('upload_files', folder_name=folder_name) }}" method="post" enctype="multipart/form-data" class="upload-form">
+                        <div class="upload-row">
+                            <label>
+                                Choose files
+                                <input name="upload_files" type="file" multiple accept="*/*">
+                            </label>
+                            <label>
+                                Subfolder (optional)
+                                <input name="subfolder_name" type="text" placeholder="e.g. Season 1">
+                            </label>
+                            <button type="submit" class="btn btn-primary">Upload</button>
+                        </div>
+                    </form>
+                </details>
+
+            {% else %}
+                <div class="empty-folder">
+                    <i class="fas fa-folder-open"></i>
+                    <h2>No videos found</h2>
+                    <p>Upload some videos to this library to start watching.</p>
+                </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+    </div><!-- /.tv-shell -->
 
     <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>

@@ -1,228 +1,386 @@
-const searchInput = document.querySelector('#fileSearch');
-const viewGridBtn = document.querySelector('#viewGrid');
-const viewListBtn = document.querySelector('#viewList');
-const fileGrid = document.querySelector('#fileGrid');
-const mobileMenuToggle = document.querySelector('#mobileMenuToggle');
-const sidebar = document.querySelector('#sidebar');
-const sidebarBackdrop = document.querySelector('#sidebarBackdrop');
-const navLinks = document.querySelectorAll('.nav-item');
-const openFolderModalBtn = document.querySelector('#openFolderModal');
-const openFolderModalSidebarBtn = document.querySelector('#openFolderModalSidebar');
-const refreshPageBtn = document.querySelector('#refreshPage');
-const folderModal = document.querySelector('#folderModal');
-const folderModalClose = document.querySelector('#closeFolderModal');
-const firstModalInput = document.querySelector('.folder-add-form input');
-const previewModal = document.querySelector('#previewModal');
-const previewVideo = document.querySelector('#previewVideo');
-const closePreviewModalBtn = document.querySelector('#closePreviewModal');
+/* =============================================
+   PyTV — TV Remote / D-pad Navigation Engine
+   Samsung TV Browser Optimized
+   ============================================= */
 
-const setBodyModalState = (isOpen) => {
-  document.body.classList.toggle('modal-open', isOpen);
-};
+'use strict';
 
-if (searchInput && fileGrid) {
-  searchInput.addEventListener('input', (event) => {
-    const query = event.target.value.toLowerCase().trim();
-    const cards = fileGrid.querySelectorAll('.file-card');
-    cards.forEach((card) => {
-      const name = card.dataset.name || '';
-      const match = name.includes(query);
-      card.style.display = match ? 'flex' : 'none';
-    });
-  });
+// ─── ELEMENT REFS ────────────────────────────
+const playerOverlay   = document.getElementById('playerOverlay');
+const mainPlayer      = document.getElementById('mainPlayer');
+const playerUI        = document.getElementById('playerUI');
+const playerBack      = document.getElementById('playerBack');
+const playerFilename  = document.getElementById('playerFilename');
+const playerHint      = document.getElementById('playerHint');
+const progressFill    = document.getElementById('progressFill');
+const progressThumb   = document.getElementById('progressThumb');
+const progressBar     = document.getElementById('progressBar');
+const playerCurrentTime = document.getElementById('playerCurrentTime');
+const playerDuration  = document.getElementById('playerDuration');
+const btnPlayPause    = document.getElementById('btnPlayPause');
+const playIcon        = document.getElementById('playIcon');
+const btnRewind       = document.getElementById('btnRewind');
+const btnForward      = document.getElementById('btnForward');
+const btnFullscreen   = document.getElementById('btnFullscreen');
+const folderModal     = document.getElementById('folderModal');
+const closeFolderModal = document.getElementById('closeFolderModal');
+const fileGrid        = document.getElementById('fileGrid');
+
+// ─── STATE ───────────────────────────────────
+let uiHideTimer = null;
+let isPlayerOpen = false;
+let focusedCardIndex = -1;
+
+// ─── MODAL ───────────────────────────────────
+function openModal() {
+    if (!folderModal) return;
+    folderModal.classList.add('active');
+    folderModal.setAttribute('aria-hidden', 'false');
+    const firstInput = folderModal.querySelector('input');
+    if (firstInput) setTimeout(() => firstInput.focus(), 50);
 }
 
-if (viewGridBtn && viewListBtn && fileGrid) {
-  const setActiveView = (view) => {
-    viewGridBtn.classList.toggle('active', view === 'grid');
-    viewListBtn.classList.toggle('active', view === 'list');
-    fileGrid.classList.toggle('list-view', view === 'list');
-  };
-
-  viewGridBtn.addEventListener('click', () => setActiveView('grid'));
-  viewListBtn.addEventListener('click', () => setActiveView('list'));
+function closeModal() {
+    if (!folderModal) return;
+    folderModal.classList.remove('active');
+    folderModal.setAttribute('aria-hidden', 'true');
 }
 
-const openSidebar = () => {
-  if (!sidebar) return;
-  sidebar.classList.add('open');
-  if (sidebarBackdrop) sidebarBackdrop.classList.add('active');
-};
+const openBtns = document.querySelectorAll('#openFolderModalBtn, #openFolderModalBtnEmpty');
+openBtns.forEach(btn => btn?.addEventListener('click', openModal));
+closeFolderModal?.addEventListener('click', closeModal);
+folderModal?.addEventListener('click', (e) => { if (e.target === folderModal) closeModal(); });
 
-const closeSidebar = () => {
-  if (!sidebar) return;
-  sidebar.classList.remove('open');
-  if (sidebarBackdrop) sidebarBackdrop.classList.remove('active');
-};
+// Refresh button
+document.getElementById('refreshPage')?.addEventListener('click', () => window.location.reload());
 
-if (mobileMenuToggle) {
-  mobileMenuToggle.addEventListener('click', () => {
-    if (sidebar && sidebar.classList.contains('open')) {
-      closeSidebar();
+// ─── TIME FORMATTING ─────────────────────────
+function fmtTime(secs) {
+    if (isNaN(secs) || secs < 0) return '0:00';
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = Math.floor(secs % 60);
+    const mm = String(m).padStart(h > 0 ? 2 : 1, '0');
+    const ss = String(s).padStart(2, '0');
+    return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+}
+
+// ─── PLAYER UI SHOW/HIDE ─────────────────────
+function showPlayerUI() {
+    playerUI?.classList.remove('hidden');
+    playerHint && (playerHint.style.opacity = '1');
+    clearTimeout(uiHideTimer);
+    uiHideTimer = setTimeout(hidePlayerUI, 3500);
+}
+
+function hidePlayerUI() {
+    if (!mainPlayer || mainPlayer.paused) return; // keep visible when paused
+    playerUI?.classList.add('hidden');
+    playerHint && (playerHint.style.opacity = '0');
+}
+
+// ─── VIDEO PLAYER ────────────────────────────
+function openPlayer(url, name) {
+    if (!playerOverlay || !mainPlayer) return;
+    isPlayerOpen = true;
+    mainPlayer.src = url;
+    playerFilename && (playerFilename.textContent = name || 'Video');
+    playerOverlay.classList.add('active');
+    playerOverlay.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    mainPlayer.play().catch(() => {});
+    showPlayerUI();
+}
+
+function closePlayer() {
+    if (!playerOverlay || !mainPlayer) return;
+    isPlayerOpen = false;
+    mainPlayer.pause();
+    mainPlayer.src = '';
+    playerOverlay.classList.remove('active');
+    playerOverlay.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    clearTimeout(uiHideTimer);
+    // restore focus to the card that was playing
+    restoreFocus();
+}
+
+playerBack?.addEventListener('click', closePlayer);
+
+// Play / Pause
+function togglePlayPause() {
+    if (!mainPlayer) return;
+    if (mainPlayer.paused) {
+        mainPlayer.play().catch(() => {});
     } else {
-      openSidebar();
+        mainPlayer.pause();
     }
-  });
+    showPlayerUI();
 }
 
-if (sidebarBackdrop) {
-  sidebarBackdrop.addEventListener('click', closeSidebar);
-}
+btnPlayPause?.addEventListener('click', togglePlayPause);
 
-const closeFolderModal = () => {
-  if (!folderModal) return;
-  folderModal.classList.remove('active');
-  setBodyModalState(false);
-};
-
-const openFolderModal = () => {
-  if (!folderModal) return;
-  folderModal.classList.add('active');
-  setBodyModalState(true);
-  if (firstModalInput) firstModalInput.focus();
-};
-
-if (openFolderModalBtn) {
-  openFolderModalBtn.addEventListener('click', openFolderModal);
-}
-
-if (openFolderModalSidebarBtn) {
-  openFolderModalSidebarBtn.addEventListener('click', openFolderModal);
-}
-
-if (refreshPageBtn) {
-  refreshPageBtn.addEventListener('click', () => window.location.reload());
-}
-
-if (folderModalClose) {
-  folderModalClose.addEventListener('click', closeFolderModal);
-}
-
-if (closePreviewModalBtn) {
-  closePreviewModalBtn.addEventListener('click', closePreviewModal);
-}
-
-if (folderModal) {
-  folderModal.addEventListener('click', (event) => {
-    if (event.target === folderModal) {
-      closeFolderModal();
-    }
-  });
-}
-
-if (previewModal) {
-  previewModal.addEventListener('click', (event) => {
-    if (event.target === previewModal) {
-      closePreviewModal();
-    }
-  });
-}
-
-if (fileGrid) {
-  fileGrid.addEventListener('click', (event) => {
-    const previewButton = event.target.closest('.preview-btn');
-    if (!previewButton) return;
-    const previewUrl = previewButton.dataset.previewUrl;
-    if (previewUrl) {
-      openPreviewModal(previewUrl);
-    }
-  });
-}
-
-function getFileCards() {
-  return Array.from(document.querySelectorAll('.file-card'));
-}
-
-function getGridColumns() {
-  if (!fileGrid) return 1;
-  return getComputedStyle(fileGrid).gridTemplateColumns.split(' ').filter(Boolean).length || 1;
-}
-
-function focusAdjacentCard(delta) {
-  const cards = getFileCards();
-  const activeIndex = cards.indexOf(document.activeElement);
-  if (activeIndex < 0) return;
-  const nextIndex = activeIndex + delta;
-  if (nextIndex >= 0 && nextIndex < cards.length) {
-    cards[nextIndex].focus();
-  }
-}
-
-function handleRemoteNavigation(event) {
-  if (!fileGrid) return;
-  const cards = getFileCards();
-  if (!cards.length) return;
-  const activeIndex = cards.indexOf(document.activeElement);
-  if (event.key === 'ArrowRight' && activeIndex >= 0) {
-    event.preventDefault();
-    focusAdjacentCard(1);
-    return;
-  }
-  if (event.key === 'ArrowLeft' && activeIndex >= 0) {
-    event.preventDefault();
-    focusAdjacentCard(-1);
-    return;
-  }
-  if (event.key === 'ArrowDown') {
-    event.preventDefault();
-    const columns = getGridColumns();
-    if (activeIndex < 0) {
-      cards[0].focus();
-      return;
-    }
-    focusAdjacentCard(columns);
-    return;
-  }
-  if (event.key === 'ArrowUp' && activeIndex >= 0) {
-    event.preventDefault();
-    const columns = getGridColumns();
-    focusAdjacentCard(-columns);
-    return;
-  }
-  if (event.key === 'Enter' && activeIndex >= 0) {
-    event.preventDefault();
-    const card = cards[activeIndex];
-    const previewButton = card.querySelector('.preview-btn');
-    const fileLink = card.querySelector('.file-card-link');
-    if (previewButton) {
-      previewButton.click();
-      return;
-    }
-    if (fileLink) {
-      fileLink.click();
-    }
-  }
-}
-
-if (navLinks.length) {
-  navLinks.forEach((link) => {
-    link.addEventListener('click', closeSidebar);
-  });
-}
-
-window.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape') {
-    closeSidebar();
-    closeFolderModal();
-    closePreviewModal();
-  }
-  handleRemoteNavigation(event);
+mainPlayer?.addEventListener('play', () => {
+    playIcon?.classList.replace('fa-play', 'fa-pause');
+    showPlayerUI();
 });
 
-function openPreviewModal(url) {
-  if (!previewModal || !previewVideo) return;
-  previewVideo.src = url;
-  previewModal.classList.add('active');
-  setBodyModalState(true);
-  previewVideo.play().catch(() => {});
+mainPlayer?.addEventListener('pause', () => {
+    playIcon?.classList.replace('fa-pause', 'fa-play');
+    showPlayerUI(); // keep visible when paused
+    clearTimeout(uiHideTimer);
+});
+
+mainPlayer?.addEventListener('ended', () => {
+    playIcon?.classList.replace('fa-pause', 'fa-play');
+    showPlayerUI();
+    clearTimeout(uiHideTimer);
+});
+
+// Rewind / Forward
+btnRewind?.addEventListener('click', () => {
+    if (!mainPlayer) return;
+    mainPlayer.currentTime = Math.max(0, mainPlayer.currentTime - 10);
+    showPlayerUI();
+});
+
+btnForward?.addEventListener('click', () => {
+    if (!mainPlayer) return;
+    mainPlayer.currentTime = Math.min(mainPlayer.duration || Infinity, mainPlayer.currentTime + 10);
+    showPlayerUI();
+});
+
+// Fullscreen
+btnFullscreen?.addEventListener('click', () => {
+    const el = playerOverlay;
+    if (!el) return;
+    if (document.fullscreenElement) {
+        document.exitFullscreen?.();
+    } else {
+        el.requestFullscreen?.() || el.webkitRequestFullscreen?.();
+    }
+    showPlayerUI();
+});
+
+// Progress bar
+function updateProgress() {
+    if (!mainPlayer || !mainPlayer.duration) return;
+    const pct = (mainPlayer.currentTime / mainPlayer.duration) * 100;
+    if (progressFill) progressFill.style.width = pct + '%';
+    if (progressThumb) progressThumb.style.left  = pct + '%';
+    if (playerCurrentTime) playerCurrentTime.textContent = fmtTime(mainPlayer.currentTime);
+    if (playerDuration)    playerDuration.textContent    = fmtTime(mainPlayer.duration);
 }
 
-function closePreviewModal() {
-  if (!previewModal || !previewVideo) return;
-  previewVideo.pause();
-  previewVideo.removeAttribute('src');
-  previewVideo.load();
-  previewModal.classList.remove('active');
-  setBodyModalState(false);
+mainPlayer?.addEventListener('timeupdate', updateProgress);
+mainPlayer?.addEventListener('loadedmetadata', updateProgress);
+
+progressBar?.addEventListener('click', (e) => {
+    if (!mainPlayer || !mainPlayer.duration) return;
+    const rect = progressBar.getBoundingClientRect();
+    const pct = (e.clientX - rect.left) / rect.width;
+    mainPlayer.currentTime = pct * mainPlayer.duration;
+    showPlayerUI();
+});
+
+// Move mouse → show UI
+playerOverlay?.addEventListener('mousemove', showPlayerUI);
+playerOverlay?.addEventListener('click', (e) => {
+    // clicking video itself toggles play
+    if (e.target === mainPlayer) { togglePlayPause(); return; }
+    showPlayerUI();
+});
+
+// ─── D-PAD NAVIGATION ────────────────────────
+// Samsung TV remote sends standard arrow keys + Enter + Escape/Return
+
+function getFocusables(group) {
+    if (group) return Array.from(document.querySelectorAll(`.focusable[data-nav-group="${group}"]`))
+                          .filter(el => el.offsetParent !== null);
+    return Array.from(document.querySelectorAll('.focusable'))
+                .filter(el => el.offsetParent !== null);
 }
 
+function getCurrentFocused() {
+    return document.activeElement;
+}
+
+// Grid-aware D-pad navigation
+function navigateGrid(direction) {
+    const cards = getFocusables('files');
+    if (!cards.length) return false;
+
+    const active = getCurrentFocused();
+    const idx = cards.indexOf(active);
+
+    if (idx < 0) {
+        cards[0].focus();
+        focusedCardIndex = 0;
+        return true;
+    }
+
+    // Calculate grid columns
+    let cols = 1;
+    if (fileGrid) {
+        const style = getComputedStyle(fileGrid);
+        cols = style.gridTemplateColumns.split(' ').filter(Boolean).length || 1;
+    }
+
+    let next = -1;
+    if (direction === 'right' && idx < cards.length - 1)  next = idx + 1;
+    if (direction === 'left'  && idx > 0)                  next = idx - 1;
+    if (direction === 'down'  && idx + cols < cards.length) next = idx + cols;
+    if (direction === 'up'    && idx - cols >= 0)           next = idx - cols;
+
+    if (next >= 0 && next < cards.length) {
+        cards[next].focus();
+        cards[next].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        focusedCardIndex = next;
+        return true;
+    }
+    return false;
+}
+
+function navigateLibraries(direction) {
+    const cards = getFocusables('libraries');
+    if (!cards.length) return false;
+
+    const active = getCurrentFocused();
+    const idx = cards.indexOf(active);
+
+    if (idx < 0) {
+        cards[0].focus();
+        return true;
+    }
+
+    let next = -1;
+    if (direction === 'right' && idx < cards.length - 1) next = idx + 1;
+    if (direction === 'left'  && idx > 0)                 next = idx - 1;
+
+    if (next >= 0) {
+        cards[next].focus();
+        return true;
+    }
+    return false;
+}
+
+function restoreFocus() {
+    const cards = getFocusables('files');
+    if (focusedCardIndex >= 0 && focusedCardIndex < cards.length) {
+        cards[focusedCardIndex].focus();
+    }
+}
+
+// ─── KEYBOARD / REMOTE HANDLER ───────────────
+window.addEventListener('keydown', (e) => {
+
+    // ── PLAYER OPEN ──
+    if (isPlayerOpen) {
+        switch (e.key) {
+            case 'Escape':
+            case 'XF86Back':       // Samsung back button
+            case 'BrowserBack':
+                e.preventDefault();
+                closePlayer();
+                break;
+            case ' ':
+            case 'Enter':
+                e.preventDefault();
+                togglePlayPause();
+                break;
+            case 'ArrowLeft':
+                e.preventDefault();
+                if (mainPlayer) mainPlayer.currentTime = Math.max(0, mainPlayer.currentTime - 10);
+                showPlayerUI();
+                break;
+            case 'ArrowRight':
+                e.preventDefault();
+                if (mainPlayer) mainPlayer.currentTime = Math.min(mainPlayer.duration || 1e9, mainPlayer.currentTime + 10);
+                showPlayerUI();
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                if (mainPlayer) mainPlayer.volume = Math.min(1, mainPlayer.volume + 0.1);
+                showPlayerUI();
+                break;
+            case 'ArrowDown':
+                e.preventDefault();
+                if (mainPlayer) mainPlayer.volume = Math.max(0, mainPlayer.volume - 0.1);
+                showPlayerUI();
+                break;
+        }
+        return; // swallow all keys when player open
+    }
+
+    // ── MODAL OPEN ──
+    if (folderModal?.classList.contains('active')) {
+        if (e.key === 'Escape') closeModal();
+        return;
+    }
+
+    // ── NAVIGATION ──
+    const active = getCurrentFocused();
+    const group = active?.dataset?.navGroup;
+
+    switch (e.key) {
+        case 'ArrowRight':
+            e.preventDefault();
+            if (group === 'libraries') { navigateLibraries('right'); break; }
+            navigateGrid('right');
+            break;
+        case 'ArrowLeft':
+            e.preventDefault();
+            if (group === 'libraries') { navigateLibraries('left'); break; }
+            navigateGrid('left');
+            break;
+        case 'ArrowDown':
+            e.preventDefault();
+            if (group === 'libraries') { /* fall through to files */ break; }
+            navigateGrid('down');
+            break;
+        case 'ArrowUp':
+            e.preventDefault();
+            navigateGrid('up');
+            break;
+        case 'Enter':
+        case ' ':
+            if (active && active.classList.contains('file-card')) {
+                e.preventDefault();
+                const url  = active.dataset.previewUrl;
+                const name = active.dataset.fileName;
+                if (url && active.dataset.isVideo === 'true') {
+                    openPlayer(url, name);
+                }
+            }
+            break;
+        case 'Escape':
+        case 'XF86Back':
+            closeModal();
+            break;
+    }
+});
+
+// ─── FILE CARD CLICK ─────────────────────────
+fileGrid?.addEventListener('click', (e) => {
+    const card = e.target.closest('.file-card');
+    if (!card) return;
+    const url  = card.dataset.previewUrl;
+    const name = card.dataset.fileName;
+    if (url && card.dataset.isVideo === 'true') {
+        focusedCardIndex = getFocusables('files').indexOf(card);
+        openPlayer(url, name);
+    }
+});
+
+// ─── AUTO-FOCUS FIRST ITEM ───────────────────
+window.addEventListener('DOMContentLoaded', () => {
+    const first = document.querySelector('.focusable[data-nav-group="files"], .focusable[data-nav-group="libraries"]');
+    if (first) {
+        setTimeout(() => first.focus(), 200);
+    }
+});
+
+// ─── SAMSUNG TV: prevent scroll bounce ───────
+document.addEventListener('touchmove', (e) => {
+    if (isPlayerOpen) e.preventDefault();
+}, { passive: false });
